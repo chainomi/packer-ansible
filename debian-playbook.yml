@@ -3,26 +3,21 @@
   hosts: all
   become: yes  
   vars:   
-    packages:
-     - apache2
-   
+    # Creating a new variable secret_text (dictionary) with the json value of the secret from aws secret manager using packer data source e.g.
+    #{"secret_text": {"secret_value": "hash-secret-test"}}
+
+    # secret_text: > 
+    #   {{ secret_text_aws }}
   tasks:
-    - name: Update apt packages
-      become: true
-      apt:
-        upgrade: no
-        update_cache: yes
+    - name: Variable check - Display variable 
+      ansible.builtin.debug:
+      # checking content of variable passing in with secret data from packer aws secret manager data source 
+        var: secret_text_aws
 
-    - name: Install apache2
-      apt:
-        name: "{{ packages }}"
-        state: present
-        update_cache: yes
-
-    - name: Start and enable apache2 service
-      systemd:
-        name: apache2
-        state: started
-        enabled: yes
-
-
+    - name: Create file with secret
+      shell: |
+        echo {{ secret_text_aws }}
+        touch secret.txt
+        ls -alt
+        echo {{ secret_text_aws['secret_value'] }} > secret.txt 
+   

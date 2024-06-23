@@ -16,6 +16,11 @@ variable "region" {
   default = "us-east-1"
 }
 
+variable "secret_name" {
+  type    = string
+  default = "secret_test"
+}
+
 locals {
   ami_prefix = "debian-ami"
   ami_suffix = formatdate("YYYY.MM.DD.HH.MM", timestamp())
@@ -26,6 +31,7 @@ locals {
     ssh_user = "admin"
   }
   encrypted = true
+  secret = "${jsondecode(data.amazon-secretsmanager.secret.secret_string)}"
 }
 
 data "amazon-ami" "debian-source-ami" {
@@ -37,6 +43,13 @@ data "amazon-ami" "debian-source-ami" {
   owners      = ["amazon"]
   most_recent = true
   region      = var.region
+}
+
+# get secret from aws secrete manager
+
+data "amazon-secretsmanager" "secret" {
+  name = var.secret_name
+  region = var.region
 }
 
 source "amazon-ebs" "debian-ami" {
@@ -72,6 +85,12 @@ build {
   provisioner "ansible" {
     playbook_file = "./debian-playbook.yml"
     user          = local.base_instance.ssh_user
+    # extra_arguments = ["--extra-vars", "${data.amazon-secretsmanager.secret.secret_string}"]  
+    # extra_arguments = ["--extra-vars", "secret_text_aws=${data.amazon-secretsmanager.secret.secret_string}", "-vv"] 
+
+    # creating a variable called secret_text_aws and setting it to the secret (json) from aws
+    extra_arguments = ["--extra-vars", "{secret_text_aws: ${data.amazon-secretsmanager.secret.secret_string}}", "-vv"]         
   }
+
 
 }
